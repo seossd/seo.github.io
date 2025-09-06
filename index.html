@@ -1,5 +1,5 @@
-<!-- index.html -->
 
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -15,46 +15,46 @@
     <div class="flex-1 flex w-full max-w-4xl mx-auto rounded-lg shadow-2xl overflow-hidden my-4">
         
         <!-- 사이드바 - 대화 목록 -->
-        <div id="sidebar" class="w-1/4 p-4 border-r bg-gray-100 border-gray-200">
+        <div id="sidebar" class="w-1/4 p-4 border-r bg-gray-100 border-gray-200 dark:bg-gray-900 dark:border-gray-700">
             <div class="flex justify-between items-center mb-4">
-                <div class="font-bold text-lg text-gray-800">채팅</div>
-                <button id="themeToggle" class="p-2 rounded-full transition-colors duration-300 hover:bg-gray-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-700">
+                <div class="font-bold text-lg text-gray-800 dark:text-gray-100">채팅</div>
+                <button id="themeToggle" class="p-2 rounded-full transition-colors duration-300 hover:bg-gray-200 dark:hover:bg-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-700 dark:text-gray-300">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 1.33 0 2.597-.266 3.752-.748z" />
                     </svg>
                 </button>
             </div>
             <div id="nicknameContainer" class="flex items-center gap-2 mb-4">
-                <div id="nicknameDisplay" class="text-sm truncate text-gray-600">내 닉네임: 로딩 중...</div>
+                <div id="nicknameDisplay" class="text-sm truncate text-gray-600 dark:text-gray-400">내 닉네임: 로딩 중...</div>
                 <button id="openNicknameModal" class="text-sm text-blue-500 hover:text-blue-600 focus:outline-none">닉네임 설정</button>
             </div>
             <ul id="userList" class="space-y-2"></ul>
         </div>
 
         <!-- 메인 채팅창 -->
-        <div id="chatContainer" class="flex-1 flex flex-col bg-white">
-            <header class="p-4 border-b bg-white border-gray-200 flex items-center justify-between">
-                <h2 id="targetNickname" class="text-lg font-semibold text-gray-800">대화 상대 선택</h2>
+        <div id="chatContainer" class="flex-1 flex flex-col bg-white dark:bg-gray-800">
+            <header class="p-4 border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between">
+                <h2 id="targetNickname" class="text-lg font-semibold text-gray-800 dark:text-gray-100">대화 상대 선택</h2>
             </header>
 
             <main id="messageList" class="flex-1 p-6 overflow-y-auto space-y-4">
-                <div id="placeholder" class="text-center text-gray-500 mt-20">대화 상대방을 선택해 주세요.</div>
+                <div id="placeholder" class="text-center text-gray-500 dark:text-gray-400 mt-20">대화 상대방을 선택해 주세요.</div>
                 <div id="typingIndicator" class="flex justify-start items-center space-x-2 text-sm text-gray-500 hidden">
-                    <div class="p-3 rounded-2xl bg-gray-300">
+                    <div class="p-3 rounded-2xl bg-gray-300 dark:bg-gray-600">
                         <div class="flex space-x-1">
-                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
-                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></span>
-                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-300"></span>
+                            <span class="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"></span>
+                            <span class="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce delay-150"></span>
+                            <span class="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce delay-300"></span>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <form id="messageForm" class="p-4 border-t bg-white border-gray-200 flex items-center space-x-2">
+            <form id="messageForm" class="p-4 border-t bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 flex items-center space-x-2">
                 <input
                     type="text"
                     id="messageInput"
-                    class="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
                     placeholder="메시지 입력..."
                     disabled
                 />
@@ -74,14 +74,14 @@
     
     <!-- 닉네임 설정 모달 -->
     <div id="nicknameModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 hidden">
-        <div class="p-8 rounded-lg shadow-lg max-w-md w-full bg-white text-gray-800">
+        <div class="p-8 rounded-lg shadow-lg max-w-md w-full bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
             <h2 class="text-xl font-bold mb-4">닉네임 설정</h2>
             <p class="mb-4">메신저에서 사용할 짧은 닉네임을 설정해주세요.</p>
             <form id="nicknameForm" class="flex flex-col space-y-4">
                 <input
                     type="text"
                     id="nicknameInput"
-                    class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="닉네임 입력..."
                 />
                 <button
@@ -119,8 +119,6 @@
         const placeholderElement = document.getElementById('placeholder');
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
-        const chatContainer = document.getElementById('chatContainer');
-        const sidebar = document.getElementById('sidebar');
         const openNicknameModalButton = document.getElementById('openNicknameModal');
         const typingIndicator = document.getElementById('typingIndicator');
 
@@ -153,7 +151,7 @@
 
                     const bubbleDiv = document.createElement('div');
                     bubbleDiv.className = `p-3 max-w-sm rounded-2xl shadow-sm ${
-                        isMyMessage ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-300 text-gray-800 rounded-bl-none'
+                        isMyMessage ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-bl-none'
                     }`;
                     bubbleDiv.innerText = msg.text;
 
@@ -176,7 +174,7 @@
             
             usersWithNicknames.forEach(user => {
                 const li = document.createElement('li');
-                li.className = 'p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-200';
+                li.className = 'p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-200 dark:hover:bg-gray-700';
                 li.innerText = user.nickname;
                 li.onclick = () => {
                     setTargetUser(user.uid, user.nickname);
@@ -285,17 +283,7 @@
         
         // 테마 전환
         themeToggle.addEventListener('click', () => {
-            const isDark = body.classList.contains('dark');
             body.classList.toggle('dark');
-            body.classList.toggle('bg-gray-50');
-            body.classList.toggle('bg-gray-900');
-            body.classList.toggle('text-gray-800');
-            body.classList.toggle('text-white');
-            
-            chatContainer.classList.toggle('bg-white');
-            chatContainer.classList.toggle('bg-gray-800');
-            sidebar.classList.toggle('bg-gray-100');
-            sidebar.classList.toggle('bg-gray-900');
         });
 
         // 초기화
