@@ -1,4 +1,5 @@
 <!-- index.html -->
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -23,7 +24,10 @@
                     </svg>
                 </button>
             </div>
-            <div id="nicknameDisplay" class="text-sm mb-4 truncate text-gray-600">내 닉네임: 로딩 중...</div>
+            <div id="nicknameContainer" class="flex items-center gap-2 mb-4">
+                <div id="nicknameDisplay" class="text-sm truncate text-gray-600">내 닉네임: 로딩 중...</div>
+                <button id="openNicknameModal" class="text-sm text-blue-500 hover:text-blue-600 focus:outline-none">닉네임 설정</button>
+            </div>
             <ul id="userList" class="space-y-2"></ul>
         </div>
 
@@ -35,6 +39,15 @@
 
             <main id="messageList" class="flex-1 p-6 overflow-y-auto space-y-4">
                 <div id="placeholder" class="text-center text-gray-500 mt-20">대화 상대방을 선택해 주세요.</div>
+                <div id="typingIndicator" class="flex justify-start items-center space-x-2 text-sm text-gray-500 hidden">
+                    <div class="p-3 rounded-2xl bg-gray-300">
+                        <div class="flex space-x-1">
+                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
+                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></span>
+                            <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-300"></span>
+                        </div>
+                    </div>
+                </div>
             </main>
 
             <form id="messageForm" class="p-4 border-t bg-white border-gray-200 flex items-center space-x-2">
@@ -83,7 +96,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, doc, setDoc, getDoc, getDocsFromCollectionGroup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Firebase 설정
@@ -108,6 +121,8 @@
         const body = document.body;
         const chatContainer = document.getElementById('chatContainer');
         const sidebar = document.getElementById('sidebar');
+        const openNicknameModalButton = document.getElementById('openNicknameModal');
+        const typingIndicator = document.getElementById('typingIndicator');
 
         // 전역 상태 변수
         let userId = null;
@@ -116,12 +131,13 @@
         let targetNickname = null;
         let typingListener = null;
         let messageListener = null;
+        let typingTimeout = null;
 
         // 메시지 전송 후 자동 스크롤
         function scrollToBottom() {
             messageListElement.scrollTop = messageListElement.scrollHeight;
         }
-        
+
         // 메시지를 화면에 렌더링
         function renderMessages(messages) {
             messageListElement.innerHTML = '';
@@ -151,29 +167,12 @@
         // 사용자 목록을 화면에 렌더링
         async function renderUserList() {
             userListElement.innerHTML = '';
-            const users = [];
-            const messagesCollection = collection(db, `/artifacts/${appId}/public/data/messages`);
-            const messagesSnapshot = await getDocs(messagesCollection);
+            const usersCollection = collection(db, `/artifacts/${appId}/public/data/users`);
+            const usersSnapshot = await getDocs(usersCollection);
             
-            const uids = new Set();
-            messagesSnapshot.docs.forEach(doc => {
-              const data = doc.data();
-              uids.add(data.senderId);
-              uids.add(data.receiverId);
-            });
-        
-            const userListArray = Array.from(uids).filter(uid => uid !== userId);
-            
-            const usersWithNicknames = await Promise.all(
-                userListArray.map(async (uid) => {
-                    const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, uid);
-                    const userDoc = await getDoc(userDocRef);
-                    if (userDoc.exists()) {
-                        return { uid, nickname: userDoc.data().nickname };
-                    }
-                    return { uid, nickname: uid.substring(0, 8) };
-                })
-            );
+            const usersWithNicknames = usersSnapshot.docs
+                .filter(doc => doc.id !== userId)
+                .map(doc => ({ uid: doc.id, nickname: doc.data().nickname }));
             
             usersWithNicknames.forEach(user => {
                 const li = document.createElement('li');
@@ -212,9 +211,10 @@
             typingListener = onSnapshot(typingDocRef, (doc) => {
                 const isTyping = doc.exists() && doc.data().isTyping && doc.data().userId !== userId;
                 if (isTyping) {
-                    // '입력 중...' 상태 표시
+                    typingIndicator.classList.remove('hidden');
+                    scrollToBottom();
                 } else {
-                    // '입력 중...' 상태 숨기기
+                    typingIndicator.classList.add('hidden');
                 }
             });
         }
@@ -230,16 +230,26 @@
                 myNickname = newNickname;
                 nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
                 nicknameModal.classList.add('hidden');
-                renderUserList();
+                await renderUserList();
             } catch (e) {
                 console.error("닉네임 저장 실패:", e);
             }
+        });
+
+        // 닉네임 모달 열기
+        openNicknameModalButton.addEventListener('click', () => {
+            nicknameModal.classList.remove('hidden');
+            nicknameInput.value = myNickname || '';
         });
 
         // 메시지 전송
         messageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (messageInput.value.trim() === '' || !userId || !targetId) return;
+
+            // '입력 중...' 상태 해제
+            handleTyping(false);
+            
             try {
                 await addDoc(collection(db, `/artifacts/${appId}/public/data/messages`), {
                     text: messageInput.value,
@@ -251,6 +261,26 @@
             } catch (e) {
                 console.error("메시지 전송 실패:", e);
             }
+        });
+
+        // '입력 중...' 상태 업데이트
+        const handleTyping = async (isUserTyping) => {
+            if (!userId || !targetId) return;
+            try {
+                const typingDocRef = doc(db, `/artifacts/${appId}/public/data/typing`, userId);
+                await setDoc(typingDocRef, { userId, isTyping: isUserTyping }, { merge: true });
+            } catch (e) {
+                console.error("입력 중 상태 업데이트 실패:", e);
+            }
+        };
+
+        messageInput.addEventListener('input', () => {
+            if (!targetId) return;
+            if (typingTimeout) clearTimeout(typingTimeout);
+            handleTyping(true);
+            typingTimeout = setTimeout(() => {
+                handleTyping(false);
+            }, 3000);
         });
         
         // 테마 전환
@@ -270,34 +300,34 @@
 
         // 초기화
         window.onload = async () => {
-            // 익명 또는 커스텀 토큰으로 로그인
             try {
+                // 익명 또는 커스텀 토큰으로 로그인
                 if (typeof __initial_auth_token !== 'undefined') {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
+
+                onAuthStateChanged(auth, async user => {
+                    if (user) {
+                        userId = user.uid;
+                        const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, userId);
+                        const userDoc = await getDoc(userDocRef);
+
+                        if (userDoc.exists()) {
+                            myNickname = userDoc.data().nickname;
+                            nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
+                            await renderUserList();
+                        } else {
+                            // 닉네임이 없으면 모달 표시
+                            nicknameModal.classList.remove('hidden');
+                        }
+                    }
+                });
             } catch (e) {
                 console.error("Firebase 인증 실패:", e);
             }
-
-            onAuthStateChanged(auth, async user => {
-                if (user) {
-                    userId = user.uid;
-                    const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, userId);
-                    const userDoc = await getDoc(userDocRef);
-
-                    if (userDoc.exists()) {
-                        myNickname = userDoc.data().nickname;
-                        nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
-                        await renderUserList();
-                    } else {
-                        nicknameModal.classList.remove('hidden');
-                    }
-                }
-            });
         };
     </script>
 </body>
 </html>
-
