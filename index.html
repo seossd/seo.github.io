@@ -119,6 +119,7 @@
         const body = document.body;
         const openNicknameModalButton = document.getElementById('openNicknameModal');
         const typingIndicator = document.getElementById('typingIndicator');
+        const sendButton = document.getElementById('sendButton');
 
         // 전역 상태 변수
         let userId = null;
@@ -179,6 +180,12 @@
                     document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800'));
                     li.classList.add('bg-blue-200', 'text-blue-800');
                 };
+                li.ontouchstart = (e) => {
+                    e.preventDefault(); // Prevent default behavior (e.g., scrolling)
+                    setTargetUser(user.uid, user.nickname);
+                    document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800'));
+                    li.classList.add('bg-blue-200', 'text-blue-800');
+                };
                 userListElement.appendChild(li);
             });
         }
@@ -224,7 +231,7 @@
                 const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, userId);
                 await setDoc(userDocRef, { nickname: newNickname });
                 myNickname = newNickname;
-                nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
+                nicknameDisplay.innerText = `내 닉네임: ${myNickname} (ID: ${userId})`;
                 nicknameModal.classList.add('hidden');
                 await renderUserList();
             } catch (e) {
@@ -302,7 +309,7 @@
 
                         if (userDoc.exists()) {
                             myNickname = userDoc.data().nickname;
-                            nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
+                            nicknameDisplay.innerText = `내 닉네임: ${myNickname} (ID: ${userId})`;
                             await renderUserList();
                         } else {
                             // 닉네임이 없으면 모달 표시
