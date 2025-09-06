@@ -1,5 +1,3 @@
-<!-- index.html -->
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -9,11 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .dark .bg-gray-100 { background-color: #1f2937; }
+        .dark .text-gray-800 { color: #f9fafb; }
+        /* 추가 디자인 스타일 */
+        #userList li:hover { transform: scale(1.02); transition: transform 0.2s; }
+        .chat-bubble { transition: all 0.3s ease; }
+        .chat-bubble:hover { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-<body class="flex flex-col h-screen font-sans antialiased transition-colors duration-500 bg-gray-50 text-gray-800">
-    <div class="flex-1 flex w-full max-w-4xl mx-auto rounded-lg shadow-2xl overflow-hidden my-4">
-        
+<body class="flex flex-col h-screen font-sans antialiased transition-colors duration-500 bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+    <div class="flex-1 flex w-full max-w-4xl mx-auto rounded-lg shadow-2xl overflow-hidden my-4 bg-white dark:bg-gray-800">
+
         <!-- 사이드바 - 대화 목록 -->
         <div id="sidebar" class="w-1/4 p-4 border-r bg-gray-100 border-gray-200 dark:bg-gray-900 dark:border-gray-700">
             <div class="flex justify-between items-center mb-4">
@@ -37,7 +41,7 @@
                 <h2 id="targetNickname" class="text-lg font-semibold text-gray-800 dark:text-gray-100">대화 상대 선택</h2>
             </header>
 
-            <main id="messageList" class="flex-1 p-6 overflow-y-auto space-y-4">
+            <main id="messageList" class="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50 dark:bg-gray-900">
                 <div id="placeholder" class="text-center text-gray-500 dark:text-gray-400 mt-20">대화 상대방을 선택해 주세요.</div>
                 <div id="typingIndicator" class="flex justify-start items-center space-x-2 text-sm text-gray-500 hidden">
                     <div class="p-3 rounded-2xl bg-gray-300 dark:bg-gray-600">
@@ -54,7 +58,7 @@
                 <input
                     type="text"
                     id="messageInput"
-                    class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                    class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-200"
                     placeholder="메시지 입력..."
                     disabled
                 />
@@ -71,7 +75,7 @@
             </form>
         </div>
     </div>
-    
+
     <!-- 닉네임 설정 모달 -->
     <div id="nicknameModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 hidden">
         <div class="p-8 rounded-lg shadow-lg max-w-md w-full bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
@@ -81,7 +85,7 @@
                 <input
                     type="text"
                     id="nicknameInput"
-                    class="p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                     placeholder="닉네임 입력..."
                 />
                 <button
@@ -95,9 +99,9 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, doc, setDoc, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
         // Firebase 설정
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
@@ -151,7 +155,7 @@
                     messageDiv.className = `flex ${isMyMessage ? 'justify-end' : 'justify-start'}`;
 
                     const bubbleDiv = document.createElement('div');
-                    bubbleDiv.className = `p-3 max-w-sm rounded-2xl shadow-sm ${
+                    bubbleDiv.className = `chat-bubble p-3 max-w-sm rounded-2xl shadow-sm ${
                         isMyMessage ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-bl-none'
                     }`;
                     bubbleDiv.innerText = msg.text;
@@ -168,26 +172,20 @@
             userListElement.innerHTML = '';
             const usersCollection = collection(db, `/artifacts/${appId}/public/data/users`);
             const usersSnapshot = await getDocs(usersCollection);
-            
+
             const usersWithNicknames = usersSnapshot.docs
                 .filter(doc => doc.id !== userId)
                 .map(doc => ({ uid: doc.id, nickname: doc.data().nickname }));
-            
+
             usersWithNicknames.forEach(user => {
                 const li = document.createElement('li');
                 li.className = 'p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-200 dark:hover:bg-gray-700';
                 li.innerText = user.nickname;
-                li.onclick = () => {
+                li.addEventListener('click', () => {
                     setTargetUser(user.uid, user.nickname);
-                    document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800'));
-                    li.classList.add('bg-blue-200', 'text-blue-800');
-                };
-                li.ontouchstart = (e) => {
-                    e.preventDefault(); // Prevent default behavior (e.g., scrolling)
-                    setTargetUser(user.uid, user.nickname);
-                    document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800'));
-                    li.classList.add('bg-blue-200', 'text-blue-800');
-                };
+                    document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800', 'dark:bg-blue-900', 'dark:text-blue-200'));
+                    li.classList.add('bg-blue-200', 'text-blue-800', 'dark:bg-blue-900', 'dark:text-blue-200');
+                });
                 userListElement.appendChild(li);
             });
         }
@@ -199,19 +197,23 @@
             targetNicknameElement.innerText = nickname;
             messageInput.disabled = false;
             sendButton.disabled = false;
-            
+
             if (messageListener) messageListener();
             if (typingListener) typingListener();
 
-            messageListener = onSnapshot(query(collection(db, `/artifacts/${appId}/public/data/messages`)), (snapshot) => {
+            const messagesQuery = query(
+                collection(db, `/artifacts/${appId}/public/data/messages`),
+                orderBy('timestamp', 'asc')
+            );
+            messageListener = onSnapshot(messagesQuery, (snapshot) => {
                 const allMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const filteredMessages = allMessages.filter(msg => 
+                const filteredMessages = allMessages.filter(msg =>
                     (msg.senderId === userId && msg.receiverId === targetId) ||
                     (msg.senderId === targetId && msg.receiverId === userId)
-                ).sort((a, b) => a.timestamp - b.timestamp);
+                );
                 renderMessages(filteredMessages);
             });
-            
+
             const typingDocRef = doc(db, `/artifacts/${appId}/public/data/typing`, targetId);
             typingListener = onSnapshot(typingDocRef, (doc) => {
                 const isTyping = doc.exists() && doc.data().isTyping && doc.data().userId !== userId;
@@ -254,7 +256,7 @@
 
             // '입력 중...' 상태 해제
             handleTyping(false);
-            
+
             try {
                 await addDoc(collection(db, `/artifacts/${appId}/public/data/messages`), {
                     text: messageInput.value,
@@ -287,11 +289,17 @@
                 handleTyping(false);
             }, 3000);
         });
-        
+
         // 테마 전환
         themeToggle.addEventListener('click', () => {
             body.classList.toggle('dark');
+            localStorage.setItem('darkMode', body.classList.contains('dark'));
         });
+
+        // 초기 다크 모드 설정
+        if (localStorage.getItem('darkMode') === 'true') {
+            body.classList.add('dark');
+        }
 
         // 초기화
         window.onload = async () => {
@@ -326,4 +334,3 @@
     </script>
 </body>
 </html>
-
