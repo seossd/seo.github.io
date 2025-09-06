@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메신저 앱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="flex flex-col h-screen font-sans antialiased transition-colors duration-500 bg-gray-50 text-gray-800">
+    <div class="flex-1 flex w-full max-w-4xl mx-auto rounded-lg shadow-2xl overflow-hidden my-4">
+        
+        <!-- 사이드바 - 대화 목록 -->
+        <div id="sidebar" class="w-1/4 p-4 border-r bg-gray-100 border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <div class="font-bold text-lg text-gray-800">채팅</div>
+                <button id="themeToggle" class="p-2 rounded-full transition-colors duration-300 hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-700">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 1.33 0 2.597-.266 3.752-.748z" />
+                    </svg>
+                </button>
+            </div>
+            <div id="nicknameDisplay" class="text-sm mb-4 truncate text-gray-600">내 닉네임: 로딩 중...</div>
+            <ul id="userList" class="space-y-2"></ul>
+        </div>
+
+        <!-- 메인 채팅창 -->
+        <div id="chatContainer" class="flex-1 flex flex-col bg-white">
+            <header class="p-4 border-b bg-white border-gray-200 flex items-center justify-between">
+                <h2 id="targetNickname" class="text-lg font-semibold text-gray-800">대화 상대 선택</h2>
+            </header>
+
+            <main id="messageList" class="flex-1 p-6 overflow-y-auto space-y-4">
+                <div id="placeholder" class="text-center text-gray-500 mt-20">대화 상대방을 선택해 주세요.</div>
+            </main>
+
+            <form id="messageForm" class="p-4 border-t bg-white border-gray-200 flex items-center space-x-2">
+                <input
+                    type="text"
+                    id="messageInput"
+                    class="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="메시지 입력..."
+                    disabled
+                />
+                <button
+                    type="submit"
+                    id="sendButton"
+                    class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.917H13.5a.75.75 0 010 1.5H4.984l-2.432 7.918a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 닉네임 설정 모달 -->
+    <div id="nicknameModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 hidden">
+        <div class="p-8 rounded-lg shadow-lg max-w-md w-full bg-white text-gray-800">
+            <h2 class="text-xl font-bold mb-4">닉네임 설정</h2>
+            <p class="mb-4">메신저에서 사용할 짧은 닉네임을 설정해주세요.</p>
+            <form id="nicknameForm" class="flex flex-col space-y-4">
+                <input
+                    type="text"
+                    id="nicknameInput"
+                    class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="닉네임 입력..."
+                />
+                <button
+                    type="submit"
+                    class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    닉네임 저장
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, doc, setDoc, getDoc, getDocsFromCollectionGroup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase 설정
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // DOM 요소 가져오기
+        const nicknameModal = document.getElementById('nicknameModal');
+        const nicknameForm = document.getElementById('nicknameForm');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const nicknameDisplay = document.getElementById('nicknameDisplay');
+        const userListElement = document.getElementById('userList');
+        const targetNicknameElement = document.getElementById('targetNickname');
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+        const messageListElement = document.getElementById('messageList');
+        const placeholderElement = document.getElementById('placeholder');
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        const chatContainer = document.getElementById('chatContainer');
+        const sidebar = document.getElementById('sidebar');
+
+        // 전역 상태 변수
+        let userId = null;
+        let myNickname = null;
+        let targetId = null;
+        let targetNickname = null;
+        let typingListener = null;
+        let messageListener = null;
+
+        // 메시지 전송 후 자동 스크롤
+        function scrollToBottom() {
+            messageListElement.scrollTop = messageListElement.scrollHeight;
+        }
+        
+        // 메시지를 화면에 렌더링
+        function renderMessages(messages) {
+            messageListElement.innerHTML = '';
+            if (messages.length === 0) {
+                placeholderElement.innerText = targetNickname ? `${targetNickname}님과 대화를 시작해보세요!` : '대화 상대방을 선택해 주세요.';
+                placeholderElement.classList.remove('hidden');
+            } else {
+                placeholderElement.classList.add('hidden');
+                messages.forEach(msg => {
+                    const isMyMessage = msg.senderId === userId;
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `flex ${isMyMessage ? 'justify-end' : 'justify-start'}`;
+
+                    const bubbleDiv = document.createElement('div');
+                    bubbleDiv.className = `p-3 max-w-sm rounded-2xl shadow-sm ${
+                        isMyMessage ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-300 text-gray-800 rounded-bl-none'
+                    }`;
+                    bubbleDiv.innerText = msg.text;
+
+                    messageDiv.appendChild(bubbleDiv);
+                    messageListElement.appendChild(messageDiv);
+                });
+            }
+            scrollToBottom();
+        }
+
+        // 사용자 목록을 화면에 렌더링
+        async function renderUserList() {
+            userListElement.innerHTML = '';
+            const users = [];
+            const messagesCollection = collection(db, `/artifacts/${appId}/public/data/messages`);
+            const messagesSnapshot = await getDocs(messagesCollection);
+            
+            const uids = new Set();
+            messagesSnapshot.docs.forEach(doc => {
+              const data = doc.data();
+              uids.add(data.senderId);
+              uids.add(data.receiverId);
+            });
+        
+            const userListArray = Array.from(uids).filter(uid => uid !== userId);
+            
+            const usersWithNicknames = await Promise.all(
+                userListArray.map(async (uid) => {
+                    const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, uid);
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        return { uid, nickname: userDoc.data().nickname };
+                    }
+                    return { uid, nickname: uid.substring(0, 8) };
+                })
+            );
+            
+            usersWithNicknames.forEach(user => {
+                const li = document.createElement('li');
+                li.className = 'p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-200';
+                li.innerText = user.nickname;
+                li.onclick = () => {
+                    setTargetUser(user.uid, user.nickname);
+                    document.querySelectorAll('#userList li').forEach(el => el.classList.remove('bg-blue-200', 'text-blue-800'));
+                    li.classList.add('bg-blue-200', 'text-blue-800');
+                };
+                userListElement.appendChild(li);
+            });
+        }
+
+        // 대상 사용자 설정 및 메시지 리스너 연결
+        function setTargetUser(id, nickname) {
+            targetId = id;
+            targetNickname = nickname;
+            targetNicknameElement.innerText = nickname;
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            
+            if (messageListener) messageListener();
+            if (typingListener) typingListener();
+
+            messageListener = onSnapshot(query(collection(db, `/artifacts/${appId}/public/data/messages`)), (snapshot) => {
+                const allMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const filteredMessages = allMessages.filter(msg => 
+                    (msg.senderId === userId && msg.receiverId === targetId) ||
+                    (msg.senderId === targetId && msg.receiverId === userId)
+                ).sort((a, b) => a.timestamp - b.timestamp);
+                renderMessages(filteredMessages);
+            });
+            
+            const typingDocRef = doc(db, `/artifacts/${appId}/public/data/typing`, targetId);
+            typingListener = onSnapshot(typingDocRef, (doc) => {
+                const isTyping = doc.exists() && doc.data().isTyping && doc.data().userId !== userId;
+                if (isTyping) {
+                    // '입력 중...' 상태 표시
+                } else {
+                    // '입력 중...' 상태 숨기기
+                }
+            });
+        }
+
+        // 닉네임 저장
+        nicknameForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newNickname = nicknameInput.value.trim();
+            if (newNickname === '') return;
+            try {
+                const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, userId);
+                await setDoc(userDocRef, { nickname: newNickname });
+                myNickname = newNickname;
+                nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
+                nicknameModal.classList.add('hidden');
+                renderUserList();
+            } catch (e) {
+                console.error("닉네임 저장 실패:", e);
+            }
+        });
+
+        // 메시지 전송
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (messageInput.value.trim() === '' || !userId || !targetId) return;
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/messages`), {
+                    text: messageInput.value,
+                    senderId: userId,
+                    receiverId: targetId,
+                    timestamp: Date.now(),
+                });
+                messageInput.value = '';
+            } catch (e) {
+                console.error("메시지 전송 실패:", e);
+            }
+        });
+        
+        // 테마 전환
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.classList.contains('dark');
+            body.classList.toggle('dark');
+            body.classList.toggle('bg-gray-50');
+            body.classList.toggle('bg-gray-900');
+            body.classList.toggle('text-gray-800');
+            body.classList.toggle('text-white');
+            
+            chatContainer.classList.toggle('bg-white');
+            chatContainer.classList.toggle('bg-gray-800');
+            sidebar.classList.toggle('bg-gray-100');
+            sidebar.classList.toggle('bg-gray-900');
+        });
+
+        // 초기화
+        window.onload = async () => {
+            // 익명 또는 커스텀 토큰으로 로그인
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (e) {
+                console.error("Firebase 인증 실패:", e);
+            }
+
+            onAuthStateChanged(auth, async user => {
+                if (user) {
+                    userId = user.uid;
+                    const userDocRef = doc(db, `/artifacts/${appId}/public/data/users`, userId);
+                    const userDoc = await getDoc(userDocRef);
+
+                    if (userDoc.exists()) {
+                        myNickname = userDoc.data().nickname;
+                        nicknameDisplay.innerText = `내 닉네임: ${myNickname}`;
+                        await renderUserList();
+                    } else {
+                        nicknameModal.classList.remove('hidden');
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
